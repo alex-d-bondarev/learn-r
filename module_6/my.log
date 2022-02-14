@@ -23,5 +23,8 @@ wc -l world_salaries_6000.csv
 > 8:20PM
 initial raw data is ready
 
-> 8:51PM
-Small data > currency exploration
+Date:   Mon Feb 14 20:21:44 2022 +0000
+    initial module 6 commit
+
+Date:   Mon Feb 14 20:51:59 2022 +0000
+    Small data > currency exploration
