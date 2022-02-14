@@ -1,0 +1,24 @@
+14 Feb 
+> 8:02PM 
+It took me 2 days to find a data set that I can understand and that meets the following criteria:
+1. Your data set should have at least 700, but less than 6000, records
+2. eight (8) attributes and the data should not be “clean”. Part of this assignment will require you to clean the data yourself.
+Item no.2 was the hardest. Almost all data sets I found so far were cleaned or did not make sense to me.
+The "Salary Survey" looks promising
+
+> 8:05PM
+wc -l world_salaries.csv
+   27717 world_salaries.csv
+   
+> 8:08PM
+head -6000 world_salaries.csv >> ../raw_6000_data/world_salaries_6000.csv
+
+> 8:08PM
+cd ../raw_6000_data
+
+> 8:09PM
+wc -l world_salaries_6000.csv
+    6000 world_salaries_6000.csv
+    
+> 8:20PM
+initial raw data is ready
