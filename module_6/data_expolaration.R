@@ -99,9 +99,179 @@ table(usa_filtered_data$Highest.level.of.education.completed) # Might use for co
 # 1. How complicated is it to prepare a model for such app?
 # 2. What is the algorithm?
 # 3. Additional questions to consider
+# 4. Is there any way to improve questionnaire?
 
 #-------------------------------------------------------------------------------
-summary(usa_filtered_data$Annual.income)
+# Try to filter out all software related jobs.
+# SDET stands for Software Developer In Test
+# Related jobs are Quality Assurance Engineer (QA)
+# Software Developer and similar. Use table() to see the list of all jobs
+table(usa_filtered_data$Job.title)
+
+# Too many jobs have only 1 record. Need to try to filter out
+
+# Step 1 - Make them all lower case and trim spaces
+usa_filtered_data$Job.title <- trimws(tolower(usa_filtered_data$Job.title))
+jobTitleTable <- table(usa_filtered_data$Job.title)
+jobTitleDF <- data.frame(jobTitleTable)
+names(jobTitleDF)
+
+# Step 2 - Pull all jobs containing key words
+softwareJobs <- sqldf('SELECT *
+                         FROM jobTitleDF
+                        WHERE Var1 LIKE "%sdet%"
+                           OR Var1 LIKE "%qa%"
+                           OR Var1 LIKE "%software%"
+                           OR Var1 LIKE "%developer%"
+                           OR Var1 LIKE "%quality%"
+                           OR Var1 LIKE "%assurance%"')
+
+# Step 2 - filter out extra pulled jobs, like managers
+softwareJobs <- sqldf('SELECT *
+                         FROM softwareJobs
+                        WHERE Var1 NOT LIKE "%designer%"
+                          AND Var1 NOT LIKE "%director%"
+                          AND Var1 NOT LIKE "%manager%"
+                          AND Var1 NOT LIKE "%curriculum%"
+                          AND Var1 NOT LIKE "%team lead%"
+                          AND Var1 NOT LIKE "%architect%"
+                          AND Var1 NOT LIKE "%consultant%"
+                          AND Var1 NOT LIKE "%chemist%"
+                          AND Var1 NOT LIKE "%elearning%"
+                          AND Var1 NOT LIKE "%content%"
+                          AND Var1 NOT LIKE "%quality improvement associate%"
+                          AND Var1 NOT LIKE "%coordinator%"
+                          AND Var1 NOT LIKE "%engineering lead%"
+                          AND Var1 NOT LIKE "%analyst%"
+                          AND Var1 NOT LIKE "%support%"
+                          AND Var1 NOT LIKE "%coordinator%"
+                          AND Var1 NOT LIKE "%process%"
+                          AND Var1 NOT LIKE "%product%"
+                          AND Var1 NOT LIKE "%parts%"
+                          AND Var1 NOT LIKE "%staff%"
+                          AND Var1 NOT LIKE "%instruct%"')
+
+usa_software <- usa_filtered_data[usa_filtered_data$Job.title %in% softwareJobs$Var1,]
+summary(usa_software$Annual.income)
+
+#-------------------------------------------------------------------------------
+# Looks like there are annual income outliers. 
+# Visualization might help to filter them out
+stripchart(usa_software$Annual.income, 
+           method="stack",
+           at=c(0.05),
+           pch=20,
+           frame.plot)
+abline(v=mean(usa_software$Annual.income), col="red",)
+
+# mean is far right, due to several outliers.
+# need to filter them out, but first make labels more readable
+stripchart(usa_software$Annual.income, 
+           method="stack",
+           at=c(0.05),
+           pch=20,
+           frame.plot,
+           xaxt = "n")
+abline(v=mean(usa_software$Annual.income), col="red",)
+axis(1, at=usa_software$Annual.income, labels=format(usa_software$Annual.income, scientific=FALSE))
+# reference: https://stackoverflow.com/a/5968136/8661297
+
+# Now try filtering out and drawing again
+no_outliers <- usa_software[usa_software$Annual.income < 200000 & usa_software$Annual.income > 1000,]
+stripchart(no_outliers$Annual.income, 
+           method="stack",
+           at=c(0.05),
+           pch=20,
+           frame.plot,
+           xaxt = "n")
+abline(v=mean(no_outliers$Annual.income), col="red",)
+axis(1, at=no_outliers$Annual.income, labels=format(no_outliers$Annual.income, scientific=FALSE))
+
+head(no_outliers)
+#-------------------------------------------------------------------------------
+# Now need to group data by experience. 
+# I will use Overall.years.of.professional.experience for that purpose
+table(no_outliers$Years.of.experience.in.field)
+
+# Need to add min/max experience columns, so that "between" filter can be used:
+for (i in 1:length(no_outliers$Overall.years.of.professional.experience)) {
+  if(no_outliers$Overall.years.of.professional.experience[i] == "1 year or less"){
+    no_outliers$Experience.min[i] = 0
+    no_outliers$Experience.max[i] = 1
+  } else if(no_outliers$Overall.years.of.professional.experience[i] == "2 - 4 years") {
+    no_outliers$Experience.min[i] = 2
+    no_outliers$Experience.max[i] = 4
+  }else if(no_outliers$Overall.years.of.professional.experience[i] == "5-7 years") {
+    no_outliers$Experience.min[i] = 5
+    no_outliers$Experience.max[i] = 7
+  }else if(no_outliers$Overall.years.of.professional.experience[i] == "8 - 10 years") {
+    no_outliers$Experience.min[i] = 8
+    no_outliers$Experience.max[i] = 10
+  }else if(no_outliers$Overall.years.of.professional.experience[i] == "11 - 20 years") {
+    no_outliers$Experience.min[i] = 11
+    no_outliers$Experience.max[i] = 20
+  }else if(no_outliers$Overall.years.of.professional.experience[i] == "21 - 30 years") {
+    no_outliers$Experience.min[i] = 21
+    no_outliers$Experience.max[i] = 30
+  }else if(no_outliers$Overall.years.of.professional.experience[i] == "31 - 40 years") {
+    no_outliers$Experience.min[i] = 31
+    no_outliers$Experience.max[i] = 199
+  }
+}
+no_outliers
+
+#-------------------------------------------------------------------------------
+# Now we can create a getMySalaryExpectation function
+# getMySalaryExpectation(job, experience):
+#   Min: xxx
+#   25 percentile: xxx
+#   Median: xxx
+#   Mean: xxx
+#   75 percentile: xxx
+#   Max: xxx
+getMySalaryExpectation <- function(job, experience) {
+  if(job=="software"){
+    
+    all_salaries <- no_outliers[
+        no_outliers$Experience.min <= experience & 
+        no_outliers$Experience.max >= experience,
+      ]$Annual.income
+    res <- summary(all_salaries)
+    
+    names(res)[1] <- "Min"
+    names(res)[2] <- "25 percentile"
+    names(res)[3] <- "Median"
+    names(res)[4] <- "Mean"
+    names(res)[5] <- "75 percentile"
+    names(res)[6] <- "Max"
+    
+    return(res)
+    
+  } else {
+    print("Only software related jobs are supported in this version")
+    return(NA)
+  }
+}
+getMySalaryExpectation("not software", 5)
+getMySalaryExpectation("software", 1)
+getMySalaryExpectation("software", 15)
+getMySalaryExpectation("software", 50)
+
+all_salaries <- no_outliers[
+  no_outliers$Experience.min <= 1 & 
+    no_outliers$Experience.max >= 1,
+]$Annual.income
+res <- summary(all_salaries)
+
+names(res)[1] <- "Min"
+names(res)[2] <- "25 percentile"
+names(res)[3] <- "Median"
+names(res)[4] <- "Mean"
+names(res)[5] <- "75 percentile"
+names(res)[6] <- "Max"
+
+print(res)
+
 
 #-------------------------------------------------------------------------------
 # Park for later
