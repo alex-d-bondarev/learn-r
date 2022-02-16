@@ -40,3 +40,6 @@ Date:   Tue Feb 15 22:25:38 2022 +0000
 
 Date:   Wed Feb 16 20:04:37 2022 +0000
     finish data exploration v2
+
+Date:   Wed Feb 16 20:24:30 2022 +0000
+    replace bash with R for top 6000 rows file
