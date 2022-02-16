@@ -1,12 +1,17 @@
 install.packages("sqldf")
+install.packages("gapminder")
+install.packages("tidyverse")
+
 library(sqldf)
+library(gapminder)
+library(tidyverse)
 
 #-------------------------------------------------------------------------------
 # Load data set
 rawData <- read.csv(file="./data/6000/world_salaries_6000.csv")
 # Quick summary
 summary(rawData)
-class(rawData)
+apply(rawData, 2, function(x) length(unique(x))) # reference: https://stackoverflow.com/a/22196167/8661297
 
 #-------------------------------------------------------------------------------
 # Different countries had different ranges of salaries. 
@@ -194,28 +199,36 @@ head(no_outliers)
 table(no_outliers$Years.of.experience.in.field)
 
 # Need to add min/max experience columns, so that "between" filter can be used:
+# Follow up (next day): 
 for (i in 1:length(no_outliers$Overall.years.of.professional.experience)) {
   if(no_outliers$Overall.years.of.professional.experience[i] == "1 year or less"){
     no_outliers$Experience.min[i] = 0
     no_outliers$Experience.max[i] = 1
+    no_outliers$Experience.category[i] = 1
   } else if(no_outliers$Overall.years.of.professional.experience[i] == "2 - 4 years") {
     no_outliers$Experience.min[i] = 2
     no_outliers$Experience.max[i] = 4
+    no_outliers$Experience.category[i] = 2
   }else if(no_outliers$Overall.years.of.professional.experience[i] == "5-7 years") {
     no_outliers$Experience.min[i] = 5
     no_outliers$Experience.max[i] = 7
+    no_outliers$Experience.category[i] = 3
   }else if(no_outliers$Overall.years.of.professional.experience[i] == "8 - 10 years") {
     no_outliers$Experience.min[i] = 8
     no_outliers$Experience.max[i] = 10
+    no_outliers$Experience.category[i] = 4
   }else if(no_outliers$Overall.years.of.professional.experience[i] == "11 - 20 years") {
     no_outliers$Experience.min[i] = 11
     no_outliers$Experience.max[i] = 20
+    no_outliers$Experience.category[i] = 5
   }else if(no_outliers$Overall.years.of.professional.experience[i] == "21 - 30 years") {
     no_outliers$Experience.min[i] = 21
     no_outliers$Experience.max[i] = 30
+    no_outliers$Experience.category[i] = 6
   }else if(no_outliers$Overall.years.of.professional.experience[i] == "31 - 40 years") {
     no_outliers$Experience.min[i] = 31
     no_outliers$Experience.max[i] = 199
+    no_outliers$Experience.category[i] = 7
   }
 }
 no_outliers
@@ -257,21 +270,23 @@ getMySalaryExpectation("software", 1)
 getMySalaryExpectation("software", 15)
 getMySalaryExpectation("software", 50)
 
-all_salaries <- no_outliers[
-  no_outliers$Experience.min <= 1 & 
-    no_outliers$Experience.max >= 1,
-]$Annual.income
-res <- summary(all_salaries)
+#-------------------------------------------------------------------------------
+# Visualize salary per category
+meanAnualIncome <- mean(no_outliers$Annual.income)
+medianAnualIncome <- median(no_outliers$Annual.income)
 
-names(res)[1] <- "Min"
-names(res)[2] <- "25 percentile"
-names(res)[3] <- "Median"
-names(res)[4] <- "Mean"
-names(res)[5] <- "75 percentile"
-names(res)[6] <- "Max"
+plot(x = no_outliers$Experience.category,
+     y = no_outliers$Annual.income)
+abline(lm(no_outliers$Annual.income ~ no_outliers$Experience.category), col = "red", lwd = 2, lty = 2)
+abline(h=meanAnualIncome, col = "blue", lwd = 2, lty = 2)
+abline(h=medianAnualIncome, col = "green", lwd = 2, lty = 3)
 
-print(res)
-
+#-------------------------------------------------------------------------------
+# Make a pretty visual
+# Reference: https://towardsdatascience.com/r-for-beginners-learn-how-to-visualize-data-like-a-pro-840d1828c09c
+p <- ggplot( data=no_outliers, aes(x = Experience.category, y = Annual.income)) + geom_point()
+p
+p <- p + aes(color=continent)
 
 #-------------------------------------------------------------------------------
 # Park for later
